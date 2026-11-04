@@ -1,37 +1,30 @@
 name: Compilar APK
-
 on:
   push:
-    branches: [main, master]
+    branches: [main]
   workflow_dispatch:
-
 permissions:
   contents: write
-
 jobs:
   apk:
     runs-on: ubuntu-latest
     steps:
-      - name: Descargar el repositorio
-        uses: actions/checkout@v4
-
-      - name: Descomprimir el proyecto
-        run: unzip -q -o descargador-android.zip
-
-      - name: Instalar Java 17
-        uses: actions/setup-java@v4
+      - uses: actions/checkout@v4
+      - run: unzip -q -o descargador-android.zip
+      - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "17"
-
-      - name: Instalar el SDK de Android
-        uses: android-actions/setup-android@v3
-
-      - name: Compilar el APK
+      - name: Licencias del SDK
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+      - name: Compilar
         working-directory: descargador-android
         run: |
           chmod +x gradlew
           ./gradlew --no-daemon assembleRelease
-
-      - name: Poner nombre al APK
-        run: cp descargador-android/app/build/outputs/apk/release/app-release.apk Descargador-de-videos.apk
+      - name: Publicar
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp descargador-android/app/build/outputs/apk/release/app-release.apk Descargador-de-videos.apk
+          gh release create "apk-${{ github.run_number }}" Descargador-de-videos.apk --title "APK ${{ github.run_number }}" --notes "Listo"
